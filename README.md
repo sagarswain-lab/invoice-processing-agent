@@ -78,11 +78,13 @@ docker build -t invoice-env .
 docker run -p 7860:7860 invoice-env
 ```
 
-### Run Baseline
+### Run Inference
 
 ```bash
-export OPENAI_API_KEY=sk-...
-python baseline.py
+export API_BASE_URL=https://router.huggingface.co/v1
+export MODEL_NAME=meta-llama/Llama-3.1-8B-Instruct
+export HF_TOKEN=hf_your_token_here
+python inference.py
 ```
 
 ---
