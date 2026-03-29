@@ -1,3 +1,18 @@
+---
+title: Invoice Processing Agent
+emoji: 🧾
+colorFrom: green
+colorTo: blue
+sdk: docker
+pinned: false
+tags:
+  - openenv
+  - reinforcement-learning
+  - invoice-processing
+  - agent
+license: mit
+---
+
 # 🧾 Invoice Processing Agent — OpenEnv
 
 An OpenEnv environment where an AI agent processes invoices and decides whether to **approve**, **reject**, or **flag** them for human review.
@@ -78,13 +93,11 @@ docker build -t invoice-env .
 docker run -p 7860:7860 invoice-env
 ```
 
-### Run Inference
+### Run Baseline
 
 ```bash
-export API_BASE_URL=https://router.huggingface.co/v1
-export MODEL_NAME=meta-llama/Llama-3.1-8B-Instruct
-export HF_TOKEN=hf_your_token_here
-python inference.py
+export OPENAI_API_KEY=sk-...
+python baseline.py
 ```
 
 ---
