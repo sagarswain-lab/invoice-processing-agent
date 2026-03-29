@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Invoice Processing Agent — OpenEnv</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #04050a;
+    --bg2: #080c14;
+    --bg3: #0d1120;
+    --card: #0b0f1c;
+    --border: #1a2540;
+    --border2: #243050;
+    --green: #00e87a;
+    --green-dim: #00e87a22;
+    --cyan: #00d4ff;
+    --cyan-dim: #00d4ff15;
+    --amber: #ffc447;
+    --red: #ff4d6a;
+    --red-dim: #ff4d6a18;
+    --text: #e8edf5;
+    --text2: #7a8aaa;
+    --text3: #3d4f70;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-ui: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── grid overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── scan line ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: linear-gradient(transparent 50%, rgba(0,232,122,0.015) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 0;
+    animation: scan 8s linear infinite;
+  }
+  @keyframes scan {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(4px); }
+  }
+
+  /* ── layout ── */
+  .layout {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    grid-template-rows: 64px 1fr;
+    min-height: 100vh;
+    gap: 0;
+  }
+
+  /* ── topbar ── */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    backdrop-filter: blur(12px);
+  }
+
+  .topbar-brand {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .brand-icon {
+    width: 32px; height: 32px;
+    background: var(--green);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse-icon 3s ease-in-out infinite;
+  }
+  @keyframes pulse-icon {
+    0%, 100% { box-shadow: 0 0 0 0 var(--green); opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 800;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  .brand-name span { color: var(--green); }
+
+  .topbar-status {
+    display: flex; align-items: center; gap: 20px;
+    font-family: var(--font-mono);
+    font-size: 12px; color: var(--text2);
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    animation: blink 2s ease-in-out infinite;
+    display: inline-block; margin-right: 6px;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .topbar-meta {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--text3);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── sidebar ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 24px 20px;
+    display: flex; flex-direction: column; gap: 28px;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 700;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* task cards */
+  .task-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg3);
+    margin-bottom: 8px;
+  }
+  .task-card:hover { border-color: var(--border2); background: #0f1628; }
+  .task-card.active {
+    border-color: var(--green);
+    background: var(--green-dim);
+  }
+  .task-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .task-name {
+    font-family: var(--font-ui);
+    font-size: 15px; font-weight: 600; color: var(--text);
+    letter-spacing: 0.03em;
+  }
+  .task-card.active .task-name { color: var(--green); }
+  .difficulty-badge {
+    font-family: var(--font-mono);
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+    letter-spacing: 0.08em;
+  }
+  .easy { background: #00e87a18; color: var(--green); border: 1px solid #00e87a33; }
+  .medium { background: #ffc44718; color: var(--amber); border: 1px solid #ffc44733; }
+  .hard { background: #ff4d6a18; color: var(--red); border: 1px solid #ff4d6a33; }
+  .task-desc {
+    font-size: 12px; color: var(--text2);
+    line-height: 1.5;
+  }
+
+  /* stats */
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--text2);
+  }
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 14px; font-weight: 700; color: var(--green);
+  }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.white { color: var(--text); }
+
+  /* start button */
+  .btn-start {
+    width: 100%;
+    padding: 14px;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 800;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn-start:hover { background: #00ffaa; transform: translateY(-1px); }
+  .btn-start:active { transform: translateY(0); }
+  .btn-start:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  /* ── main content ── */
+  .main {
+    padding: 28px;
+    display: flex; flex-direction: column; gap: 20px;
+    overflow-y: auto;
+  }
+
+  .progress-bar-wrap {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 4px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    transition: width 0.5s ease;
+    border-radius: 4px;
+  }
+
+  .episode-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .episode-title {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 800;
+    color: var(--text);
+  }
+  .episode-subtitle {
+    font-family: var(--font-mono);
+    font-size: 12px; color: var(--text2);
+    margin-top: 4px;
+  }
+  .step-badge {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text2);
+    background: var(--bg3);
+  }
+  .step-badge span { color: var(--cyan); font-weight: 700; }
+
+  /* invoice card */
+  .invoice-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .invoice-card.highlight { border-color: var(--cyan); }
+
+  .invoice-card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg3);
+  }
+  .invoice-id {
+    font-family: var(--font-mono);
+    font-size: 14px; font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 0.05em;
+  }
+  .invoice-vendor {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 800;
+    color: var(--text);
+  }
+  .invoice-amount {
+    text-align: right;
+  }
+  .amount-value {
+    font-family: var(--font-mono);
+    font-size: 28px; font-weight: 700;
+    color: var(--green);
+  }
+  .amount-currency {
+    font-family: var(--font-mono);
+    font-size: 12px; color: var(--text2);
+    letter-spacing: 0.1em;
+    display: block;
+    text-align: right;
+    margin-top: 2px;
+  }
+
+  .invoice-body { padding: 20px 22px; }
+
+  .invoice-meta-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px; margin-bottom: 20px;
+  }
+  .meta-field {}
+  .meta-field-label {
+    font-family: var(--font-mono);
+    font-size: 10px; color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .meta-field-value {
+    font-family: var(--font-mono);
+    font-size: 13px; color: var(--text);
+  }
+
+  /* line items */
+  .line-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+  }
+  .line-items-table th {
+    font-family: var(--font-mono);
+    font-size: 10px; color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 400;
+  }
+  .line-items-table td {
+    font-family: var(--font-mono);
+    font-size: 12px; color: var(--text2);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .line-items-table tr:last-child td { border-bottom: none; }
+  .line-items-table td:last-child { color: var(--text); text-align: right; }
+
+  /* flags */
+  .flags-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .flag-chip {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .flag-duplicate { background: #ffc44715; color: var(--amber); border: 1px solid #ffc44730; }
+  .flag-amount_anomaly { background: #ff4d6a15; color: var(--red); border: 1px solid #ff4d6a30; }
+  .flag-unknown_vendor { background: #ff4d6a15; color: var(--red); border: 1px solid #ff4d6a30; }
+  .flag-missing_field { background: #ff6b0015; color: #ff9a47; border: 1px solid #ff6b0030; }
+  .flag-currency_mismatch { background: #aa44ff15; color: #cc88ff; border: 1px solid #aa44ff30; }
+  .no-flags {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--green);
+    padding: 4px 10px;
+    background: var(--green-dim);
+    border: 1px solid #00e87a30;
+    border-radius: 4px;
+  }
+
+  /* decision buttons */
+  .decision-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+  }
+  .decision-title {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .decision-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px; margin-bottom: 16px;
+  }
+  .btn-decision {
+    padding: 18px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .btn-decision .icon { font-size: 24px; }
+  .btn-decision.approve {
+    color: var(--green);
+    border-color: #00e87a30;
+  }
+  .btn-decision.approve:hover {
+    background: var(--green-dim);
+    border-color: var(--green);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px #00e87a20;
+  }
+  .btn-decision.reject {
+    color: var(--red);
+    border-color: #ff4d6a30;
+  }
+  .btn-decision.reject:hover {
+    background: var(--red-dim);
+    border-color: var(--red);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px #ff4d6a20;
+  }
+  .btn-decision.flag {
+    color: var(--amber);
+    border-color: #ffc44730;
+  }
+  .btn-decision.flag:hover {
+    background: #ffc44712;
+    border-color: var(--amber);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px #ffc44720;
+  }
+  .btn-decision:disabled {
+    opacity: 0.3; cursor: not-allowed; transform: none !important; box-shadow: none !important;
+  }
+  .reason-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .reason-input:focus { border-color: var(--border2); }
+  .reason-input::placeholder { color: var(--text3); }
+
+  /* feedback toast */
+  .feedback-toast {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    display: none;
+    align-items: center; gap: 10px;
+    animation: fadeIn 0.3s ease;
+  }
+  .feedback-toast.show { display: flex; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .toast-correct { background: var(--green-dim); border: 1px solid #00e87a40; color: var(--green); }
+  .toast-partial { background: #ffc44712; border: 1px solid #ffc44740; color: var(--amber); }
+  .toast-wrong { background: var(--red-dim); border: 1px solid #ff4d6a40; color: var(--red); }
+
+  /* idle state */
+  .idle-state {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 40px;
+  }
+  .idle-hex {
+    width: 80px; height: 80px;
+    background: var(--green-dim);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  .idle-title {
+    font-family: var(--font-display);
+    font-size: 24px; font-weight: 800;
+    color: var(--text);
+  }
+  .idle-subtitle {
+    font-family: var(--font-mono);
+    font-size: 13px; color: var(--text2);
+    max-width: 340px; line-height: 1.6;
+  }
+
+  /* done state */
+  .done-state {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 40px;
+  }
+  .score-ring {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 3px solid var(--green);
+    box-shadow: 0 0 40px #00e87a30;
+  }
+  .score-ring-value {
+    font-family: var(--font-mono);
+    font-size: 32px; font-weight: 700;
+    color: var(--green);
+  }
+  .score-ring-label {
+    font-family: var(--font-mono);
+    font-size: 10px; color: var(--text2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── right panel ── */
+  .panel {
+    border-left: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 24px 20px;
+    display: flex; flex-direction: column; gap: 24px;
+    overflow-y: auto;
+  }
+
+  /* score card */
+  .score-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .big-score {
+    font-family: var(--font-mono);
+    font-size: 48px; font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    margin: 8px 0 4px;
+  }
+  .big-score-label {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--text2);
+    letter-spacing: 0.1em;
+  }
+
+  /* history */
+  .history-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-icon {
+    width: 22px; height: 22px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0;
+    font-weight: 700;
+  }
+  .h-correct { background: var(--green-dim); color: var(--green); }
+  .h-partial { background: #ffc44715; color: var(--amber); }
+  .h-wrong { background: var(--red-dim); color: var(--red); }
+  .history-text { color: var(--text2); flex: 1; }
+  .history-reward { color: var(--text); font-weight: 700; }
+
+  /* api url bar */
+  .api-url-bar {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .api-url-label {
+    font-size: 9px; color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .api-url-value {
+    color: var(--cyan);
+    word-break: break-all;
+  }
+  .api-url-input {
+    background: transparent; border: none;
+    color: var(--cyan); font-family: var(--font-mono);
+    font-size: 11px; width: 100%; outline: none;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* responsive */
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: 240px 1fr; }
+    .panel { display: none; }
+  }
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── TOP BAR ── -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon"></div>
+      <span class="brand-name">Invoice<span>Agent</span></span>
+    </div>
+    <div class="topbar-status">
+      <span><span class="status-dot"></span><span id="conn-status">CONNECTING...</span></span>
+    </div>
+    <div class="topbar-meta">OPENENV · META PYTORCH · v0.1.0</div>
+  </header>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">API Endpoint</div>
+      <div class="api-url-bar">
+        <div class="api-url-label">Base URL</div>
+        <input class="api-url-input" id="base-url" value="http://localhost:7860" placeholder="http://localhost:7860"/>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Select Task</div>
+      <div class="task-card active" data-task="easy_triage">
+        <div class="task-card-header">
+          <span class="task-name">Easy Triage</span>
+          <span class="difficulty-badge easy">EASY</span>
+        </div>
+        <div class="task-desc">Clear approve/reject signals. 3 invoices.</div>
+      </div>
+      <div class="task-card" data-task="medium_triage">
+        <div class="task-card-header">
+          <span class="task-name">Medium Triage</span>
+          <span class="difficulty-badge medium">MEDIUM</span>
+        </div>
+        <div class="task-desc">Duplicates, over-budget cases. 4 invoices.</div>
+      </div>
+      <div class="task-card" data-task="hard_triage">
+        <div class="task-card-header">
+          <span class="task-name">Hard Triage</span>
+          <span class="difficulty-badge hard">HARD</span>
+        </div>
+        <div class="task-desc">Anomalies, missing fields, mismatches. 5 invoices.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Session Stats</div>
+      <div class="stat-row">
+        <span class="stat-label">TASK</span>
+        <span class="stat-value white" id="stat-task">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">STEP</span>
+        <span class="stat-value white" id="stat-step">0 / 0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">CORRECT</span>
+        <span class="stat-value" id="stat-correct">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">SCORE</span>
+        <span class="stat-value" id="stat-score">—</span>
+      </div>
+    </div>
+
+    <button class="btn-start" id="btn-start" onclick="startEpisode()">
+      ▶ START EPISODE
+    </button>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main" id="main-content">
+
+    <!-- IDLE -->
+    <div class="idle-state" id="idle-view">
+      <div class="idle-hex">🧾</div>
+      <div class="idle-title">Invoice Processing Agent</div>
+      <div class="idle-subtitle">Select a task difficulty on the left, then click START EPISODE to begin processing invoices as an AI agent.</div>
+      <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text3);">
+        Built on OpenEnv · Meta PyTorch Hackathon
+      </div>
+    </div>
+
+    <!-- ACTIVE EPISODE (hidden initially) -->
+    <div id="active-view" style="display: none; flex-direction: column; gap: 20px;">
+
+      <div class="episode-header">
+        <div>
+          <div class="episode-title" id="ep-title">Episode Running</div>
+          <div class="episode-subtitle" id="ep-id">ID: —</div>
+        </div>
+        <div class="step-badge">
+          Step <span id="ep-step">1</span> / <span id="ep-total">3</span>
+        </div>
+      </div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+      </div>
+
+      <!-- invoice card -->
+      <div class="invoice-card" id="invoice-card">
+        <div class="invoice-card-header">
+          <div>
+            <div class="invoice-id" id="inv-id">INV-0000</div>
+            <div class="invoice-vendor" id="inv-vendor">—</div>
+          </div>
+          <div class="invoice-amount">
+            <div class="amount-value" id="inv-amount">$0.00</div>
+            <span class="amount-currency" id="inv-currency">USD · <span id="inv-date">—</span></span>
+          </div>
+        </div>
+        <div class="invoice-body">
+          <div class="invoice-meta-grid">
+            <div class="meta-field">
+              <div class="meta-field-label">Invoice ID</div>
+              <div class="meta-field-value" id="meta-id">—</div>
+            </div>
+            <div class="meta-field">
+              <div class="meta-field-label">Date</div>
+              <div class="meta-field-value" id="meta-date">—</div>
+            </div>
+            <div class="meta-field">
+              <div class="meta-field-label">Status Flags</div>
+              <div id="meta-flags">—</div>
+            </div>
+          </div>
+
+          <table class="line-items-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="line-items-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- decision -->
+      <div class="decision-section">
+        <div class="decision-title">Agent Decision</div>
+        <div class="decision-grid">
+          <button class="btn-decision approve" onclick="submitDecision('approve')">
+            <span class="icon">✓</span> APPROVE
+          </button>
+          <button class="btn-decision reject" onclick="submitDecision('reject')">
+            <span class="icon">✕</span> REJECT
+          </button>
+          <button class="btn-decision flag" onclick="submitDecision('flag')">
+            <span class="icon">⚑</span> FLAG
+          </button>
+        </div>
+        <input class="reason-input" id="reason-input" placeholder="Optional: reason for your decision..." />
+        <div class="feedback-toast" id="feedback-toast" style="margin-top: 12px;">
+          <span id="feedback-icon">—</span>
+          <span id="feedback-msg">—</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- DONE -->
+    <div class="done-state" id="done-view" style="display:none;">
+      <div class="score-ring">
+        <div class="score-ring-value" id="final-score">0.0</div>
+        <div class="score-ring-label">SCORE</div>
+      </div>
+      <div class="idle-title">Episode Complete!</div>
+      <div class="idle-subtitle" id="done-message">—</div>
+      <button class="btn-start" style="max-width: 240px;" onclick="startEpisode()">
+        ↺ NEW EPISODE
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ── RIGHT PANEL ── -->
+  <aside class="panel">
+    <div>
+      <div class="section-label">Live Score</div>
+      <div class="score-card">
+        <div class="big-score-label">CURRENT SCORE</div>
+        <div class="big-score" id="panel-score">—</div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text2);" id="panel-score-sub">Start an episode</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Decision History</div>
+      <div id="history-list">
+        <div style="font-family: var(--font-mono); font-size: 12px; color: var(--text3); padding: 8px 0;">No decisions yet.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Baseline Scores</div>
+      <div class="stat-row">
+        <span class="stat-label">easy_triage</span>
+        <span class="stat-value">1.00</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">medium_triage</span>
+        <span class="stat-value amber">0.75</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">hard_triage</span>
+        <span class="stat-value red">0.60</span>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  let selectedTask = 'easy_triage';
+  let currentObs = null;
+  let stepCount = 0;
+  let totalSteps = 0;
+  let correctCount = 0;
+  let history = [];
+
+  function getBase() {
+    return document.getElementById('base-url').value.trim().replace(/\/$/, '');
+  }
+
+  async function checkHealth() {
+    try {
+      const r = await fetch(getBase() + '/health');
+      if (r.ok) {
+        document.getElementById('conn-status').textContent = 'CONNECTED';
+        document.getElementById('conn-status').style.color = 'var(--green)';
+      } else throw new Error();
+    } catch {
+      document.getElementById('conn-status').textContent = 'OFFLINE';
+      document.getElementById('conn-status').style.color = 'var(--red)';
+    }
+  }
+
+  // task selection
+  document.querySelectorAll('.task-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.task-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      selectedTask = card.dataset.task;
+    });
+  });
+
+  async function startEpisode() {
+    const btn = document.getElementById('btn-start');
+    btn.disabled = true;
+    btn.textContent = 'LOADING...';
+    correctCount = 0;
+    history = [];
+    document.getElementById('history-list').innerHTML = '<div style="font-family: var(--font-mono); font-size: 12px; color: var(--text3); padding: 8px 0;">No decisions yet.</div>';
+
+    try {
+      const r = await fetch(getBase() + '/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_name: selectedTask, seed: 42 })
+      });
+      const obs = await r.json();
+      currentObs = obs;
+      stepCount = 0;
+      totalSteps = obs.total_steps;
+      showActiveView(obs);
+    } catch (e) {
+      alert('Could not connect to backend. Make sure the server is running at ' + getBase());
+    }
+    btn.disabled = false;
+    btn.textContent = '▶ START EPISODE';
+  }
+
+  function showActiveView(obs) {
+    document.getElementById('idle-view').style.display = 'none';
+    document.getElementById('done-view').style.display = 'none';
+    document.getElementById('active-view').style.display = 'flex';
+
+    document.getElementById('ep-title').textContent = obs.task_name.replace('_', ' ').toUpperCase();
+    document.getElementById('ep-id').textContent = 'Task: ' + obs.task_name;
+    updateStep(obs);
+    updateInvoice(obs);
+    hideFeedback();
+    enableDecisions(true);
+
+    document.getElementById('stat-task').textContent = obs.task_name.split('_')[0].toUpperCase();
+    updateStats(obs);
+  }
+
+  function updateStep(obs) {
+    const step = obs.step + 1;
+    const total = obs.total_steps;
+    document.getElementById('ep-step').textContent = step;
+    document.getElementById('ep-total').textContent = total;
+    document.getElementById('progress-bar').style.width = ((step - 1) / total * 100) + '%';
+    document.getElementById('stat-step').textContent = (step - 1) + ' / ' + total;
+  }
+
+  function updateInvoice(obs) {
+    document.getElementById('inv-id').textContent = obs.invoice_id;
+    document.getElementById('inv-vendor').textContent = obs.vendor || '⚠ MISSING VENDOR';
+    document.getElementById('inv-amount').textContent = '$' + obs.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('inv-currency').innerHTML = obs.currency + ' · <span id="inv-date">' + obs.date + '</span>';
+    document.getElementById('meta-id').textContent = obs.invoice_id;
+    document.getElementById('meta-date').textContent = obs.date;
+
+    // flags
+    const flagsWrap = document.getElementById('meta-flags');
+    if (obs.flags && obs.flags.length > 0) {
+      flagsWrap.innerHTML = obs.flags.map(f =>
+        `<span class="flag-chip flag-${f}">${f.replace('_', ' ')}</span>`
+      ).join(' ');
+    } else {
+      flagsWrap.innerHTML = '<span class="no-flags">CLEAN</span>';
+    }
+
+    // line items
+    const tbody = document.getElementById('line-items-body');
+    tbody.innerHTML = '';
+    (obs.line_items || []).forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.desc}</td>
+        <td>${item.qty}</td>
+        <td>$${item.unit_price.toFixed(2)}</td>
+        <td>$${item.total.toFixed(2)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // highlight card if flags present
+    const card = document.getElementById('invoice-card');
+    card.classList.toggle('highlight', obs.flags && obs.flags.length > 0);
+  }
+
+  function updateStats(obs) {
+    document.getElementById('stat-score').textContent = obs.step > 0
+      ? (correctCount / obs.step).toFixed(2) : '—';
+    document.getElementById('stat-correct').textContent = correctCount;
+    document.getElementById('panel-score').textContent = obs.step > 0
+      ? (correctCount / obs.step).toFixed(2) : '—';
+    document.getElementById('panel-score-sub').textContent =
+      correctCount + ' correct / ' + obs.step + ' processed';
+  }
+
+  async function submitDecision(decision) {
+    if (!currentObs) return;
+    enableDecisions(false);
+
+    const reason = document.getElementById('reason-input').value || decision + ' decision';
+    try {
+      const r = await fetch(getBase() + '/step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, reason })
+      });
+      const result = await r.json();
+      const obs = result.observation;
+      const reward = result.reward;
+
+      stepCount++;
+
+      // feedback
+      if (reward >= 1.0) {
+        correctCount++;
+        showFeedback('correct', '✓', obs.message);
+        addHistory(obs.invoice_id, decision, reward, 'correct');
+      } else if (reward > 0) {
+        showFeedback('partial', '~', obs.message);
+        addHistory(obs.invoice_id, decision, reward, 'partial');
+      } else {
+        showFeedback('wrong', '✕', obs.message);
+        addHistory(obs.invoice_id, decision, reward, 'wrong');
+      }
+
+      document.getElementById('progress-bar').style.width = (stepCount / totalSteps * 100) + '%';
+      document.getElementById('ep-step').textContent = stepCount;
+      document.getElementById('stat-step').textContent = stepCount + ' / ' + totalSteps;
+
+      currentObs = obs;
+      updateStats({ step: stepCount });
+
+      if (result.done || obs.done) {
+        setTimeout(() => showDone(), 1200);
+      } else {
+        setTimeout(() => {
+          updateInvoice(obs);
+          enableDecisions(true);
+        }, 900);
+      }
+
+    } catch(e) {
+      alert('Error communicating with backend.');
+      enableDecisions(true);
+    }
+  }
+
+  async function showDone() {
+    const r = await fetch(getBase() + '/grader', { method: 'POST' });
+    const data = await r.json();
+    const score = data.score;
+
+    document.getElementById('active-view').style.display = 'none';
+    document.getElementById('done-view').style.display = 'flex';
+    document.getElementById('final-score').textContent = score.toFixed(2);
+
+    const msgs = {
+      1.0:  'Perfect score! Every invoice correctly triaged.',
+      0.75: 'Strong performance. A few tricky ones slipped through.',
+      0.5:  'Halfway there. Review your flag vs reject logic.',
+      0.25: 'Needs improvement. Watch for anomaly flags.'
+    };
+    const closest = [1.0, 0.75, 0.5, 0.25].find(t => score >= t) || 0.25;
+    document.getElementById('done-message').textContent = msgs[closest];
+
+    document.getElementById('panel-score').textContent = score.toFixed(2);
+    document.getElementById('panel-score-sub').textContent = data.correct_decisions + ' correct / ' + data.total_invoices + ' invoices';
+    document.getElementById('stat-score').textContent = score.toFixed(2);
+
+    const ring = document.querySelector('.score-ring');
+    if (score >= 0.8) ring.style.borderColor = 'var(--green)';
+    else if (score >= 0.5) ring.style.borderColor = 'var(--amber)';
+    else ring.style.borderColor = 'var(--red)';
+    document.getElementById('final-score').style.color = ring.style.borderColor;
+  }
+
+  function showFeedback(type, icon, msg) {
+    const toast = document.getElementById('feedback-toast');
+    const iconEl = document.getElementById('feedback-icon');
+    const msgEl = document.getElementById('feedback-msg');
+    toast.className = 'feedback-toast show toast-' + type;
+    iconEl.textContent = icon;
+    msgEl.textContent = msg;
+  }
+
+  function hideFeedback() {
+    document.getElementById('feedback-toast').className = 'feedback-toast';
+  }
+
+  function enableDecisions(on) {
+    document.querySelectorAll('.btn-decision').forEach(b => b.disabled = !on);
+  }
+
+  function addHistory(invoiceId, decision, reward, type) {
+    const list = document.getElementById('history-list');
+    if (list.querySelector('[data-empty]')) list.innerHTML = '';
+
+    const icons = { correct: '✓', partial: '~', wrong: '✕' };
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-icon h-${type}">${icons[type]}</div>
+      <span class="history-text">${invoiceId} → ${decision.toUpperCase()}</span>
+      <span class="history-reward">+${reward.toFixed(1)}</span>
+    `;
+    list.insertBefore(item, list.firstChild);
+  }
+
+  // init
+  checkHealth();
+  setInterval(checkHealth, 10000);
+</script>
+</body>
+</html>
