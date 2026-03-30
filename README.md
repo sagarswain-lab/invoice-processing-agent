@@ -83,7 +83,7 @@ Invoice processing is one of the most time-consuming tasks in any organization. 
 
 ```bash
 pip install -r requirements.txt
-uvicorn server.app:app --reload --port 7860
+python -m uvicorn server.app:app --reload --port 7860
 ```
 
 ### Docker
