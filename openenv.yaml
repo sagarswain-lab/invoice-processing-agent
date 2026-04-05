@@ -11,21 +11,20 @@ tags:
   - finance
   - agentic
 
+entrypoint: uvicorn server.app:app --host 0.0.0.0 --port 7860
+
 tasks:
   - name: easy_triage
     description: Approve or reject invoices with clear signals
     difficulty: easy
-    num_invoices: 3
 
   - name: medium_triage
     description: Handle duplicates, over-budget, and multi-vendor invoices
     difficulty: medium
-    num_invoices: 4
 
   - name: hard_triage
     description: Detect subtle anomalies — missing fields, currency mismatches, line item errors
     difficulty: hard
-    num_invoices: 5
 
 action_space:
   type: discrete
