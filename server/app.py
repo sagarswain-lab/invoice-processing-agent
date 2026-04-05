@@ -13,7 +13,8 @@ app = FastAPI(title="Invoice Processing Agent — OpenEnv", version="0.1.0")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "templates", "index.html")
+# ✅ Fixed path — index.html is directly inside server/
+TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "index.html")
 env = InvoiceProcessingEnvironment()
 
 class ResetRequest(BaseModel):
@@ -66,6 +67,7 @@ def grader():
 
 @app.post("/baseline")
 def baseline():
+    """Run rule-based agent on all 3 tasks. Returns reproducible scores."""
     results = {}
     for task_name in TASKS:
         obs = env.reset(task_name=task_name, seed=42)

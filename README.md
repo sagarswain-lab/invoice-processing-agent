@@ -93,11 +93,13 @@ docker build -t invoice-env .
 docker run -p 7860:7860 invoice-env
 ```
 
-### Run Baseline
+### Run Inference
 
 ```bash
-export OPENAI_API_KEY=sk-...
-python baseline.py
+export API_BASE_URL=https://router.huggingface.co/v1
+export MODEL_NAME=meta-llama/Llama-3.1-8B-Instruct
+export HF_TOKEN=hf_your_token_here
+python inference.py
 ```
 
 ---
@@ -111,7 +113,7 @@ python baseline.py
 | `/state`         | GET    | Get current episode state            |
 | `/tasks`         | GET    | List tasks + action schema           |
 | `/grader`        | POST   | Get final episode score              |
-| `/baseline`      | POST   | Run rule-based baseline on all tasks |
+| `/baseline` | POST | Run rule-based agent, returns scores for all 3 tasks |
 | `/health`        | GET    | Health check                         |
 
 ---
