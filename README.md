@@ -59,11 +59,14 @@ Invoice processing is one of the most time-consuming tasks in any organization. 
 
 ## Reward Function
 
-| Outcome              | Reward |
-|----------------------|--------|
-| Correct decision     | +1.0   |
-| Cautious flag        | +0.3   |
-| Wrong decision       | 0.0    |
+| Outcome                        | Reward |
+|--------------------------------|--------|
+| Correct decision               | +1.0   |
+| Cautious flag (flag instead of reject/approve) | +0.3   |
+| Wrong decision                 |  0.0   |
+| Severely wrong decision        | -0.5   |
+
+> Reward range: `[-0.5, 1.0]`
 
 ---
 
@@ -86,6 +89,13 @@ pip install -r requirements.txt
 python -m uvicorn server.app:app --reload --port 7860
 ```
 
+### With `uv` (recommended)
+
+```bash
+uv sync
+uv run server
+```
+
 ### Docker
 
 ```bash
@@ -95,12 +105,34 @@ docker run -p 7860:7860 invoice-env
 
 ### Run Inference
 
+**Linux / macOS:**
 ```bash
 export API_BASE_URL=https://router.huggingface.co/v1
 export MODEL_NAME=meta-llama/Llama-3.1-8B-Instruct
 export HF_TOKEN=hf_your_token_here
+export ENV_URL=https://sagar-03-invoice-processing-agent.hf.space
 python inference.py
 ```
+
+**Windows (PowerShell):**
+```powershell
+$env:API_BASE_URL="https://router.huggingface.co/v1"
+$env:MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
+$env:HF_TOKEN="hf_your_token_here"
+$env:ENV_URL="https://sagar-03-invoice-processing-agent.hf.space"
+python inference.py
+```
+
+---
+
+## Environment Variables
+
+| Variable       | Required | Default                                  | Description                          |
+|----------------|----------|------------------------------------------|--------------------------------------|
+| `API_BASE_URL` | No       | `https://router.huggingface.co/v1`       | LLM API endpoint                     |
+| `MODEL_NAME`   | No       | `meta-llama/Llama-3.1-8B-Instruct`       | Model identifier for inference       |
+| `HF_TOKEN`     | **Yes**  | —                                        | HuggingFace API token                |
+| `ENV_URL`      | No       | `https://sagar-03-invoice-processing-agent.hf.space` | OpenEnv server URL    |
 
 ---
 
