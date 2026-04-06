@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "invoice-processing-agent"
+version = "0.1.0"
+description = "An OpenEnv environment where an AI agent processes invoices and decides to approve, reject, or flag them for human review."
+authors = [
+    { name = "Sagar Swain" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.111.0",
+    "uvicorn==0.29.0",
+    "pydantic==2.7.1",
+    "openenv-core",
+    "openai",
+    "python-multipart",
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["server*"]
