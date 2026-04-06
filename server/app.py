@@ -90,3 +90,13 @@ def baseline():
 @app.get("/health")
 def health():
     return {"status": "ok", "environment": "invoice-processing-agent"}
+
+
+def main():
+    """Entry point for multi-mode deployment (uv run / script execution)."""
+    import uvicorn
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860, reload=False)
+
+
+if __name__ == "__main__":
+    main()
