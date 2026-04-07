@@ -868,6 +868,13 @@
   let correctCount = 0;
   let history = [];
 
+  // URL detection - automatically use current origin if not on localhost
+  const defaultBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:7860'
+    : window.location.origin;
+
+  document.getElementById('base-url').value = defaultBase;
+
   function getBase() {
     return document.getElementById('base-url').value.trim().replace(/\/$/, '');
   }
