@@ -199,17 +199,17 @@ class InvoiceProcessingEnvironment:
         correct = invoice["correct_decision"]
         decision = action.decision.lower().strip()
 
-        # Score the decision
+        # Score the decision — rewards must be strictly in (0, 1)
         if decision == correct:
-            reward = 1.0
+            reward = 0.99  # Correct — near-perfect but strictly < 1.0
             self._correct_decisions += 1
             message = f"✓ Correct! '{decision}' was the right call."
         elif (decision == "flag" and correct in ("approve", "reject")) or \
              (correct == "flag" and decision in ("approve", "reject")):
-            reward = 0.3  # Partial credit — flag is cautious
+            reward = 0.3   # Partial credit — flag is cautious
             message = f"~ Partial credit. Expected '{correct}', got '{decision}'."
         else:
-            reward = 0.0
+            reward = 0.01  # Wrong — strictly > 0.0
             message = f"✗ Wrong. Expected '{correct}', got '{decision}'."
 
         self._step += 1
@@ -270,7 +270,11 @@ class InvoiceProcessingEnvironment:
         )
 
     def grade(self) -> float:
-        """Return final score for the episode (0.0 to 1.0)."""
+        """Return final score for the episode, strictly in (0, 1) as required by OpenEnv validator."""
         if self._step == 0:
-            return 0.0
-        return round(self._correct_decisions / len(self._invoices), 2)
+            raw = 0.0
+        else:
+            raw = self._correct_decisions / len(self._invoices)
+        # Clamp strictly between 0 and 1 — validator rejects exact 0.0 or 1.0
+        clamped = max(0.01, min(0.99, raw))
+        return round(clamped, 2)
