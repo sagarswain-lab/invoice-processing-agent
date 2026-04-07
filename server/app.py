@@ -27,8 +27,9 @@ class StepRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def root():
-    with open(TEMPLATE_PATH) as f:
-        return f.read()
+    with open(TEMPLATE_PATH, encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(content=content, media_type="text/html; charset=utf-8")
 
 @app.post("/reset", response_model=InvoiceObservation)
 def reset(req: Optional[ResetRequest] = None):
