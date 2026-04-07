@@ -61,12 +61,11 @@ Invoice processing is one of the most time-consuming tasks in any organization. 
 
 | Outcome                        | Reward |
 |--------------------------------|--------|
-| Correct decision               | +1.0   |
-| Cautious flag (flag instead of reject/approve) | +0.3   |
-| Wrong decision                 |  0.0   |
-| Severely wrong decision        | -0.5   |
+| Correct decision               | +0.99  |
+| Cautious flag (flag instead of reject/approve) | +0.30  |
+| Wrong decision                 | +0.01  |
 
-> Reward range: `[-0.5, 1.0]`
+> Reward range: `(0, 1]` (Strictly between 0 and 1 as per Phase 2 requirements)
 
 ---
 
