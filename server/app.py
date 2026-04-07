@@ -31,6 +31,10 @@ def root():
         content = f.read()
     return HTMLResponse(content=content, media_type="text/html; charset=utf-8")
 
+@app.get("/favicon.ico")
+def favicon():
+    return None # Silent response to prevent 404 logs
+
 @app.post("/reset", response_model=InvoiceObservation)
 def reset(req: Optional[ResetRequest] = None):
     """Start a new episode. Body is optional — defaults to easy_triage."""
