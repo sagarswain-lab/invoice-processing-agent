@@ -26,15 +26,14 @@ if not HF_TOKEN:
 client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 # ── Structured log helpers ─────────────────────────────────────────────────────
-def log_start(task: str, env: str, model: str):
-    print(f"[START] task={task} env={env} model={model}", flush=True)
+def log_start(task: str):
+    print(f"[START] {task}", flush=True)
 
-def log_step(step: int, action: str, reward: float, done: bool, error=None):
-    error_str = f" error={error}" if error else ""
-    print(f"[STEP] step={step} action={action!r} reward={reward:+.2f} done={done}{error_str}", flush=True)
+def log_step(step: int, invoice_id: str, action: str, reward: float):
+    print(f"[STEP] {step} | {invoice_id} | {action} | {reward:.1f}", flush=True)
 
-def log_end(success: bool, steps: int, score: float, rewards: list):
-    print(f"[END] success={success} steps={steps} score={score:.4f} rewards={rewards}", flush=True)
+def log_end(task: str, score: float):
+    print(f"[END] {task} | {score:.2f}", flush=True)
 
 # ── LLM Logic with Retries ──────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are an expert invoice processing agent. Decision must be exactly one of: approve, reject, flag.
@@ -72,7 +71,7 @@ def run_task(task_name: str) -> float:
     score = 0.01
     success = False
 
-    log_start(task=task_name, env="invoice-processing-agent", model=MODEL_NAME)
+    log_start(task_name)
 
     try:
         # Initial reset
@@ -82,7 +81,7 @@ def run_task(task_name: str) -> float:
             obs = resp.json()
         except Exception as e:
             print(f"Log: Failed to reset environment: {e}")
-            log_end(False, 0, 0.01, [])
+            log_end(task_name, 0.01)
             return 0.01
 
         for step in range(1, 20):
@@ -103,12 +102,13 @@ def run_task(task_name: str) -> float:
                 reward = result["reward"]
                 done = result["done"]
             except Exception as e:
-                log_step(step, decision, 0.01, False, error=str(e))
+                # If network fails midway, treat it as a wrong 0.01 step to keep running
+                log_step(step, obs.get("invoice_id", "N/A"), decision, 0.01)
                 break
 
             rewards.append(reward)
             steps_taken = step
-            log_step(step, decision, reward, done)
+            log_step(step, obs.get("invoice_id", "N/A"), decision, reward)
 
             if done:
                 break
@@ -124,7 +124,7 @@ def run_task(task_name: str) -> float:
         success = score >= 0.5
 
     finally:
-        log_end(success, steps_taken, score, rewards)
+        log_end(task_name, score)
 
     return score
 
@@ -142,7 +142,9 @@ def main():
 
     print("\n=== FINAL SCORES ===", flush=True)
     for task, score in scores.items():
-        print(f"{task}: {score:.4f}", flush=True)
+        print(f"{task}: {score:.2f}", flush=True)
+    avg = sum(scores.values()) / len(scores) if scores else 0.0
+    print(f"Average: {avg:.2f}", flush=True)
 
 if __name__ == "__main__":
     main()
