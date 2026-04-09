@@ -143,7 +143,8 @@ def main():
     print("\n=== FINAL SCORES ===", flush=True)
     for task, score in scores.items():
         print(f"{task}: {score:.2f}", flush=True)
-    avg = sum(scores.values()) / len(scores) if scores else 0.0
+    raw_avg = sum(scores.values()) / len(scores) if scores else 0.01
+    avg = max(0.01, min(0.99, raw_avg))
     print(f"Average: {avg:.2f}", flush=True)
 
 if __name__ == "__main__":
