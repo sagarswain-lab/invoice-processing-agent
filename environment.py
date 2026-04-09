@@ -224,15 +224,13 @@ class InvoiceProcessingEnvironment:
         return obs, reward, done, info
 
     def state(self) -> InvoiceState:
-        raw_score = self._correct_decisions / max(self._step, 1)
-        clamped_score = max(0.01, min(0.99, raw_score))
         return InvoiceState(
             episode_id=self._episode_id,
             task_name=self._task_name or "",
             step=self._step,
             total_invoices=len(self._invoices),
             correct_decisions=self._correct_decisions,
-            score=round(clamped_score, 2)
+            score=round(self._correct_decisions / max(self._step, 1), 2)
         )
 
     def _make_observation(self, reward: float, done: bool, message: str) -> InvoiceObservation:
