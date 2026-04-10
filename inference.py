@@ -17,7 +17,8 @@ from openai import OpenAI
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
 HF_TOKEN     = os.getenv("HF_TOKEN")
-ENV_URL      = os.getenv("ENV_URL", "http://127.0.0.1:7860")
+ENV_URL = os.getenv("ENV_URL", "https://sagar-03-invoice-processing-agent.hf.space")
+#ENV_URL      = os.getenv("ENV_URL", "http://127.0.0.1:7860")
 
 if not HF_TOKEN:
     raise ValueError("HF_TOKEN environment variable is not set.")
